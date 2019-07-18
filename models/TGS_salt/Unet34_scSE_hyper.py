@@ -188,8 +188,9 @@ class Unet_scSE_hyper(nn.Module):
 
     def metric(self, logit, truth, threshold=0.5 ):
         prob = F.sigmoid(logit)
-        #dice = dice_accuracy(prob, truth, threshold=threshold, is_average=True)
-        dice = accuracy(prob, truth, threshold=threshold, is_average=True)
+        # dice = dice_accuracy(prob, truth, threshold=threshold, is_average=True)
+        # dice = accuracy(prob, truth, threshold=threshold, is_average=True)
+        dice = 
         return dice
 
     def set_mode(self, mode, is_freeze_bn=False ):

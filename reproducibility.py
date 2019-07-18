@@ -3,6 +3,7 @@ from settings import *
 
 print("Fixing random seed for reproducibility...")
 SEED = 35202  #123  #35202   #int(time.time()) #
+os.environ['PYTHONHASHSEED'] = str(SEED)
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
@@ -12,6 +13,7 @@ print('')
 
 torch.backends.cudnn.benchmark = True  ##uses the inbuilt cudnn auto-tuner to find the fastest convolution algorithms. -
 torch.backends.cudnn.enabled   = True
+torch.backends.cudnn.deterministic = True
 print ('Setting CUDA environment...')
 print ('\ttorch.__version__              =', torch.__version__)
 print ('\ttorch.version.cuda             =', torch.version.cuda)

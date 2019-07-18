@@ -1,5 +1,23 @@
 from dependencies import *
 
+def dice(input:Tensor, targs:Tensor, best_thr=0.2, iou:bool=False, eps:float=1e-8)->Rank0Tensor:
+    n = targs.shape[0]
+    
+    input = torch.softmax(input, dim=1)[:,1,...].view(n,-1)
+    input = (input > best_thr).long()
+    
+    input[input.sum(-1) < noise_th,...] = 0.0
+    
+    #input = input.argmax(dim=1).view(n,-1)
+    targs = targs.view(n,-1)
+    
+    intersect = (input * targs).sum(-1).float()
+    union = (input+targs).sum(-1).float()
+    
+    if not iou:
+        return ((2.0 * intersect + eps) / (union+eps)).mean()
+    else:
+        return ((intersect + eps) / (union - intersect + eps)).mean()
 
 def dice_accuracy(prob, truth, threshold=0.5,  is_average=True):
     batch_size = prob.size(0)

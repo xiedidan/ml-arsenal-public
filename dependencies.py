@@ -13,14 +13,8 @@ import cv2
 
 
 print("Importing standard libraries...")
-if GRAPHICS:
-    import matplotlib
-    matplotlib.use('TkAgg')
-    #matplotlib.use('WXAgg')
-    #matplotlib.use('Qt4Agg')
-    #matplotlib.use('Qt5Agg') #Qt4Agg
-    print("\tmatplotlib backend: {}".format(matplotlib.get_backend()))
 # std libs
+import matplotlib
 import collections
 import copy
 import numbers
@@ -79,7 +73,7 @@ from torch.autograd.variable import Variable
 print("\tPyTorch")
 
 
-import keras
+# import keras
 print("\tKeras")
 
 import tensorflow
@@ -104,7 +98,7 @@ print("\tDatasets")
 print("Importing external libraries...")
 import external.lovasz_losses as L
 print("\tLovasz Losses (elu+1)")
-from external.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
-print("\tSynchronized BatchNorm2d")
+#from external.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
+#print("\tSynchronized BatchNorm2d")
 print('')
 
