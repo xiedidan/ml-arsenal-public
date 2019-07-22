@@ -186,11 +186,11 @@ class Unet_scSE_hyper(nn.Module):
     #     loss = F.binary_cross_entropy_with_logits(logit, truth)
     #     return loss
 
-    def metric(self, logit, truth, threshold=0.5 ):
+    def metric(self, logit, truth, noise_th, threshold=0.2 ):
         prob = F.sigmoid(logit)
         # dice = dice_accuracy(prob, truth, threshold=threshold, is_average=True)
         # dice = accuracy(prob, truth, threshold=threshold, is_average=True)
-        dice = 
+        dice = dice_metric(prob, truth, noise_th, best_thr=threshold, iou=False, eps=1e-8)
         return dice
 
     def set_mode(self, mode, is_freeze_bn=False ):

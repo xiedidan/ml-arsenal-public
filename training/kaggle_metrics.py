@@ -79,7 +79,22 @@ def do_kaggle_metric(predict,truth, threshold=0.5):
 
     return precision, result, threshold
 
-
+#dice for threshold selection
+def dice_overall(preds, targs):
+    n = preds.shape[0]
+    
+    preds = preds.view(n, -1)
+    targs = targs.view(n, -1)
+    
+    intersect = (preds * targs).sum(-1).float()
+    union = (preds + targs).sum(-1).float()
+    
+    # count 1 if both preds and targs are empty
+    u0 = union==0
+    intersect[u0] = 1
+    union[u0] = 2
+    
+    return (2. * intersect / union)
 
 ### run ############################################################################
 
