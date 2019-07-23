@@ -5,17 +5,18 @@ def dice_metric(input, targs, noise_th, best_thr=0.2, iou=False, eps=1e-8):
 
     p = input.detach().view(n, -1)
     t = targs.detach().view(n, -1)
-    
+
     p = (p > best_thr).long()
+
     p[p.sum(-1) < noise_th,...] = 0.0
     
     t = (t > 0.5).long()
-    
+
     intersect = (p * t).sum(-1).float()
     union = (p + t).sum(-1).float()
     
     if not iou:
-        return ((2.0 * intersect + eps) / (union+eps)).mean()
+        return ((2.0 * intersect + eps) / (union + eps)).mean()
     else:
         return ((intersect + eps) / (union - intersect + eps)).mean()
 

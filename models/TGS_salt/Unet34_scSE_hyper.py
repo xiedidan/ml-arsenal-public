@@ -143,6 +143,13 @@ class Unet_scSE_hyper(nn.Module):
            (x-mean[1])/std[1],
            (x-mean[0])/std[0],
         ],1)
+        '''
+        x=torch.cat([
+           x,
+           x,
+           x
+        ],1)
+        '''
 
         e1 = self.conv1(x)
         #print(e1.size())
@@ -173,7 +180,7 @@ class Unet_scSE_hyper(nn.Module):
             F.upsample(d5,scale_factor=16, mode='bilinear',align_corners=False),
         ),1)
 
-        f = F.dropout2d(f,p=0.50)
+        # f = F.dropout2d(f,p=0.50)
         logit = self.logit(f)
         return logit
 
@@ -187,7 +194,7 @@ class Unet_scSE_hyper(nn.Module):
     #     return loss
 
     def metric(self, logit, truth, noise_th, threshold=0.2 ):
-        prob = F.sigmoid(logit)
+        prob = torch.sigmoid(logit)
         # dice = dice_accuracy(prob, truth, threshold=threshold, is_average=True)
         # dice = accuracy(prob, truth, threshold=threshold, is_average=True)
         dice = dice_metric(prob, truth, noise_th, best_thr=threshold, iou=False, eps=1e-8)
