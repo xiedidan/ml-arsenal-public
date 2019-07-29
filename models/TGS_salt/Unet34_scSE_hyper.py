@@ -134,6 +134,34 @@ class Unet_scSE_hyper(nn.Module):
             nn.ELU(inplace=True),
             nn.Conv2d(64, 1, kernel_size=1, padding=0),
         )
+        
+        # init center, decoders and logit
+        self.init_module(self.center.modules())
+        self.init_module(self.decoder5.modules())
+        self.init_module(self.decoder4.modules())
+        self.init_module(self.decoder3.modules())
+        self.init_module(self.decoder2.modules())
+        self.init_module(self.decoder1.modules())
+        
+        conv_count = 0
+        for l in self.logit.modules():
+            if isinstance(l, nn.Conv2d):
+                if conv_count == 0:
+                    nn.init.kaiming_normal_(l.weight, mode='fan_out', nonlinearity='leaky_relu')
+                elif conv_count == 1:
+                    nn.init.xavier_normal_(l.weight)
+                else:
+                    print('got more Conv2d in  logit: {}'.format(l))
+                    
+                conv_count += 1
+        
+    def init_module(self, layers, nonlinearity='relu'):
+        for l in layers:
+            if isinstance(l, nn.Conv2d):
+                nn.init.kaiming_normal_(l.weight, mode='fan_out', nonlinearity=nonlinearity)
+            elif isinstance(l, nn.BatchNorm2d):
+                nn.init.constant_(l.weight, 1)
+                nn.init.constant_(l.bias, 0)
 
     def forward(self, x):
         mean=[0.485, 0.456, 0.406]
@@ -179,8 +207,9 @@ class Unet_scSE_hyper(nn.Module):
             F.upsample(d4,scale_factor= 8, mode='bilinear',align_corners=False),
             F.upsample(d5,scale_factor=16, mode='bilinear',align_corners=False),
         ),1)
+        #print('hc',f.size())
 
-        # f = F.dropout2d(f,p=0.50)
+        #f = F.dropout2d(f, p=0.50, training=self.training)
         logit = self.logit(f)
         return logit
 
@@ -193,11 +222,11 @@ class Unet_scSE_hyper(nn.Module):
     #     loss = F.binary_cross_entropy_with_logits(logit, truth)
     #     return loss
 
-    def metric(self, logit, truth, noise_th, threshold=0.2 ):
+    def metric(self, logit, truth, noise_th, threshold=0.2, logger=None):
         prob = torch.sigmoid(logit)
         # dice = dice_accuracy(prob, truth, threshold=threshold, is_average=True)
         # dice = accuracy(prob, truth, threshold=threshold, is_average=True)
-        dice = dice_metric(prob, truth, noise_th, best_thr=threshold, iou=False, eps=1e-8)
+        dice = dice_metric(prob, truth, noise_th, best_thr=threshold, iou=False, eps=1e-8, logger=logger)
         return dice
 
     def set_mode(self, mode, is_freeze_bn=False ):

@@ -1,22 +1,27 @@
 from dependencies import *
 
-def dice_metric(input, targs, noise_th, best_thr=0.2, iou=False, eps=1e-8):
+def dice_metric(input, targs, noise_th, best_thr=0.2, iou=False, eps=1e-8, logger=None):
     n = targs.shape[0]
 
     p = input.detach().view(n, -1)
     t = targs.detach().view(n, -1)
-
-    p = (p > best_thr).long()
+    
+    if best_thr > 0:
+        p = (p > best_thr).float()
 
     p[p.sum(-1) < noise_th,...] = 0.0
     
-    t = (t > 0.5).long()
+    t = (t > 0.5).float()
 
     intersect = (p * t).sum(-1).float()
     union = (p + t).sum(-1).float()
     
+    if logger is not None:
+        logger.debug('\np.sum(): {:.2f},\tt.sum(): {:.2f},\ti: {:.2f},\tu: {:.2f},\tdice: {:.8f}'.format(p.sum(), t.sum(), intersect.sum(), union.sum(), ((2.0 * intersect) / (union + eps)).mean()))
+    
     if not iou:
-        return ((2.0 * intersect + eps) / (union + eps)).mean()
+        # return ((2.0 * intersect + eps) / (union + eps)).mean()
+        return ((2.0 * intersect) / (union + eps)).mean()
     else:
         return ((intersect + eps) / (union - intersect + eps)).mean()
 
