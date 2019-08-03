@@ -1,11 +1,22 @@
 from dependencies import *
 
 class ConvBn2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, dilation=1, stride=1, groups=1, is_bn=True):
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, dilation=1, stride=1, groups=1, is_bn=True, nonlinearity='relu'):
         super(ConvBn2d, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation, groups=groups, bias=False)
         #self.bn = SynchronizedBatchNorm2d(out_channels)
         self.bn = nn.BatchNorm2d(out_channels)
+        
+        # init
+        if nonlinearity=='relu' or nonlinearity=='leaky-relu':
+            nn.init.kaiming_normal_(self.conv.weight, mode='fan_out', nonlinearity=nonlinearity)
+        elif nonlinearity=='sigmoid':
+            nn.init.xavier_normal_(self.conv.weight)
+        else:
+            print('unknown nonlinearity: {}'.format(nonlinearity))
+            
+        nn.init.constant_(self.bn.weight, 1)
+        nn.init.constant_(self.bn.bias, 0)
 
     def forward(self, z):
         x = self.conv(z)
@@ -15,7 +26,8 @@ class ConvBn2d(nn.Module):
 class sSE(nn.Module):
     def __init__(self, out_channels):
         super(sSE, self).__init__()
-        self.conv = ConvBn2d(in_channels=out_channels,out_channels=1,kernel_size=1,padding=0)
+        self.conv = ConvBn2d(in_channels=out_channels,out_channels=1,kernel_size=1,padding=0,nonlinearity='sigmoid')
+        
     def forward(self,x):
         x=self.conv(x)
         #print('spatial',x.size())
@@ -25,8 +37,8 @@ class sSE(nn.Module):
 class cSE(nn.Module):
     def __init__(self, out_channels):
         super(cSE, self).__init__()
-        self.conv1 = ConvBn2d(in_channels=out_channels,out_channels=int(out_channels/2),kernel_size=1,padding=0)
-        self.conv2 = ConvBn2d(in_channels=int(out_channels/2),out_channels=out_channels,kernel_size=1,padding=0)
+        self.conv1 = ConvBn2d(in_channels=out_channels,out_channels=int(out_channels/2),kernel_size=1,padding=0,nonlinearity='relu')
+        self.conv2 = ConvBn2d(in_channels=int(out_channels/2),out_channels=out_channels,kernel_size=1,padding=0,nonlinearity='sigmoid')
     def forward(self,x):
         x=nn.AvgPool2d(x.size()[2:])(x)
         #print('channel',x.size())
@@ -41,8 +53,8 @@ class cSE(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, in_channels, channels, out_channels):
         super(Decoder, self).__init__()
-        self.conv1 = ConvBn2d(in_channels, channels, kernel_size=3, padding=1)
-        self.conv2 = ConvBn2d(channels, out_channels, kernel_size=3, padding=1)
+        self.conv1 = ConvBn2d(in_channels, channels, kernel_size=3, padding=1,nonlinearity='relu')
+        self.conv2 = ConvBn2d(channels, out_channels, kernel_size=3, padding=1,nonlinearity='relu')
         self.spatial_gate = sSE(out_channels)
         self.channel_gate = cSE(out_channels)
 
@@ -116,9 +128,9 @@ class Unet_scSE_hyper(nn.Module):
         self.encoder5 = self.resnet.layer4 #512
 
         self.center = nn.Sequential(
-            ConvBn2d(512,512,kernel_size=3,padding=1),
+            ConvBn2d(512,512,kernel_size=3,padding=1,nonlinearity='relu'),
             nn.ReLU(inplace=True),
-            ConvBn2d(512,256,kernel_size=3,padding=1),
+            ConvBn2d(512,256,kernel_size=3,padding=1,nonlinearity='relu'),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2,stride=2),
         )
@@ -135,14 +147,7 @@ class Unet_scSE_hyper(nn.Module):
             nn.Conv2d(64, 1, kernel_size=1, padding=0),
         )
         
-        # init center, decoders and logit
-        self.init_module(self.center.modules())
-        self.init_module(self.decoder5.modules())
-        self.init_module(self.decoder4.modules())
-        self.init_module(self.decoder3.modules())
-        self.init_module(self.decoder2.modules())
-        self.init_module(self.decoder1.modules())
-        
+        # init logit
         conv_count = 0
         for l in self.logit.modules():
             if isinstance(l, nn.Conv2d):
@@ -151,17 +156,9 @@ class Unet_scSE_hyper(nn.Module):
                 elif conv_count == 1:
                     nn.init.xavier_normal_(l.weight)
                 else:
-                    print('got more Conv2d in  logit: {}'.format(l))
+                    print('got more Conv2d in logit: {}'.format(l))
                     
                 conv_count += 1
-        
-    def init_module(self, layers, nonlinearity='relu'):
-        for l in layers:
-            if isinstance(l, nn.Conv2d):
-                nn.init.kaiming_normal_(l.weight, mode='fan_out', nonlinearity=nonlinearity)
-            elif isinstance(l, nn.BatchNorm2d):
-                nn.init.constant_(l.weight, 1)
-                nn.init.constant_(l.bias, 0)
 
     def forward(self, x):
         mean=[0.485, 0.456, 0.406]
