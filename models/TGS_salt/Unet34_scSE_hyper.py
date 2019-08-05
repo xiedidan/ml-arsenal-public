@@ -221,6 +221,23 @@ class Unet_scSE_hyper(nn.Module):
     # def criterion(self,logit, truth):
     #     loss = F.binary_cross_entropy_with_logits(logit, truth)
     #     return loss
+    
+    def criterion_pixel(self, logit_pixel, truth_pixel):
+        logit = logit_pixel.view(-1)
+        truth = truth_pixel.view(-1).float()
+        assert(logit.shape==truth.shape)
+
+        loss = F.binary_cross_entropy_with_logits(logit, truth, reduction='none')
+        if 0:
+            loss = loss.mean()
+        if 1:
+            pos = (truth>0.5).float()
+            neg = (truth<0.5).float()
+            pos_weight = pos.sum().item() + 1e-12
+            neg_weight = neg.sum().item() + 1e-12
+            loss = (0.25*pos*loss/pos_weight + 0.75*neg*loss/neg_weight).sum()
+
+        return loss
 
     def metric(self, logit, truth, noise_th, threshold=0.2, logger=None):
         prob = torch.sigmoid(logit)
