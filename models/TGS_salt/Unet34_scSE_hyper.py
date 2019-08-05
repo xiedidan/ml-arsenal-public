@@ -255,6 +255,5 @@ class Unet_scSE_hyper(nn.Module):
                         m.eval()
                         m.weight.requires_grad = False
                         m.bias.requires_grad   = False
-
         else:   
         	raise NotImplementedError
