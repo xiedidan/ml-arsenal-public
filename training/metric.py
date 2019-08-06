@@ -17,7 +17,7 @@ def dice_metric(input, targs, noise_th, best_thr=0.2, iou=False, eps=1e-8, logge
     union = (p + t).sum(-1).float()
     
     if logger is not None:
-        logger.debug('\np.sum(): {:.2f},\tt.sum(): {:.2f},\ti: {:.2f},\tu: {:.2f},\tdice: {:.8f}'.format(p.sum(), t.sum(), intersect.sum(), union.sum(), ((2.0 * intersect) / (union + eps)).mean()))
+        logger.debug('\np.sum(): {:.2f},\tt.sum(): {:.2f},\ti: {:.2f},\tu: {:.2f},\tdice: {:.8f}'.format(p.sum(), t.sum(), intersect.sum(), union.sum(), ((2.0 * intersect + eps) / (union + eps)).mean()))
     
     if not iou:
         return ((2.0 * intersect + eps) / (union + eps)).mean()
