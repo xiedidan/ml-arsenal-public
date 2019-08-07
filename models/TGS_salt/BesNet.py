@@ -247,32 +247,39 @@ class BesNet(nn.Module):
     #     loss = F.binary_cross_entropy_with_logits(logit, truth)
     #     return loss
     
-    def boundary_criterion(self, b_logit, b_truth):
+    def boundary_criterion(self, b_logit, b_truth, weights=None):
         # wbce
         logit = b_logit.view(-1)
-        truth = b_truth.view(-1)
+        truth = b_truth.view(-1).float()
         assert(logit.shape==truth.shape)
 
         loss = F.binary_cross_entropy_with_logits(logit, truth, reduction='none')
-        if 0:
+        
+        if weights is None:
             loss = loss.mean()
-        if 1:
+        else:
             pos = (truth>0.5).float()
             neg = (truth<0.5).float()
             pos_weight = pos.sum().item() + 1e-12
             neg_weight = neg.sum().item() + 1e-12
-            loss = (0.25*pos*loss/pos_weight + 0.75*neg*loss/neg_weight).sum()
+            loss = (weights[0]*pos*loss/pos_weight + weights[1]*neg*loss/neg_weight).sum()
             
         return loss
 
-    def mask_criterion(self, m_logit, b_logit, m_truth, b_truth, alpha=2, beta=0.1):
+    def mask_criterion(self, m_logit, b_logit, m_truth, b_truth, alpha=2., beta=0.1, weights=None):
         # wbce
         logit = m_logit.view(-1)
         truth = m_truth.view(-1)
         
-        blogit = b_logit.view(-1)
-        bprob = torch.sigmoid(blogit)
-        btruth = b_truth.view(-1)
+        # do NOT calc grad for boundary branch
+        with torch.no_grad():
+            blogit = b_logit.view(-1)
+            bprob = torch.sigmoid(blogit)
+            btruth = b_truth.view(-1).float()
+
+            b_temp = (beta - bprob).float()
+            b_mask = ((b_temp > 0.) * (btruth > 0.5)).float()
+            b_enhance = b_mask * (alpha * b_temp)
         
         assert(logit.shape==truth.shape)
         assert(blogit.shape==btruth.shape)
@@ -280,18 +287,18 @@ class BesNet(nn.Module):
 
         loss = F.binary_cross_entropy_with_logits(logit, truth, reduction='none')
         
-        # class balance
-        pos = (truth>0.5).float()
-        neg = (truth<0.5).float()
-        pos_weight = pos.sum().item() + 1e-12
-        neg_weight = neg.sum().item() + 1e-12
-        loss = 0.25*pos*loss/pos_weight + 0.75*neg*loss/neg_weight
+        if weights is not None:
+            # class balance
+            pos = (truth>0.5).float()
+            neg = (truth<0.5).float()
+            pos_weight = pos.sum().item() + 1e-12
+            neg_weight = neg.sum().item() + 1e-12
+            loss = weights[0]*pos*loss/pos_weight + weights[1]*neg*loss/neg_weight
         
-        # boundary enhancement - enchance boundary pixels with low prob
-        b_temp = (beta - bprob).float()
-        b_mask = ((b_temp > 0.) * (btruth > 0.5)).float()
-        b_enhance = b_mask * (alpha * b_temp)
-        loss = ((1. + b_enhance) * loss).sum()
+            # boundary enhancement - enchance boundary pixels with low prob
+            loss = ((1. + b_enhance) * loss).sum()
+        else:
+            loss = loss.mean()
 
         return loss
 

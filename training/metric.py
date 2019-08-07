@@ -6,10 +6,10 @@ def dice_metric(input, targs, noise_th, best_thr=0.2, iou=False, eps=1e-8, logge
     p = input.detach().view(n, -1)
     t = targs.detach().view(n, -1)
     
+    p[p.sum(-1) < noise_th,...] = 0.0
+    
     if best_thr > 0:
         p = (p > best_thr).float()
-
-    p[p.sum(-1) < noise_th,...] = 0.0
     
     t = (t > 0.5).float()
 
