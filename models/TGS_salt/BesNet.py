@@ -247,7 +247,7 @@ class BesNet(nn.Module):
     #     loss = F.binary_cross_entropy_with_logits(logit, truth)
     #     return loss
     
-    def boundary_criterion(self, b_logit, b_truth, weights=None):
+    def boundary_criterion(self, b_logit, b_truth, weights=None, reduction=True):
         # wbce
         logit = b_logit.view(-1)
         truth = b_truth.view(-1).float()
@@ -256,17 +256,21 @@ class BesNet(nn.Module):
         loss = F.binary_cross_entropy_with_logits(logit, truth, reduction='none')
         
         if weights is None:
-            loss = loss.mean()
+            if reduction:
+                loss = loss.mean()
         else:
             pos = (truth>0.5).float()
             neg = (truth<0.5).float()
             pos_weight = pos.sum().item() + 1e-12
             neg_weight = neg.sum().item() + 1e-12
-            loss = (weights[0]*pos*loss/pos_weight + weights[1]*neg*loss/neg_weight).sum()
-            
+            if reduction:
+                loss = (weights[0]*pos*loss/pos_weight + weights[1]*neg*loss/neg_weight).sum()
+            else:
+                loss = (weights[0]*pos*loss/pos_weight + weights[1]*neg*loss/neg_weight)
+                
         return loss
 
-    def mask_criterion(self, m_logit, b_logit, m_truth, b_truth, alpha=2., beta=0.1, weights=None):
+    def mask_criterion(self, m_logit, b_logit, m_truth, b_truth, alpha=2., beta=0.1, weights=None, reduction=True):
         # wbce
         logit = m_logit.view(-1)
         truth = m_truth.view(-1)
@@ -296,9 +300,13 @@ class BesNet(nn.Module):
             loss = weights[0]*pos*loss/pos_weight + weights[1]*neg*loss/neg_weight
         
             # boundary enhancement - enchance boundary pixels with low prob
-            loss = ((1. + b_enhance) * loss).sum()
+            if reduction:
+                loss = ((1. + b_enhance) * loss).sum()
+            else:
+                loss = ((1. + b_enhance) * loss)
         else:
-            loss = loss.mean()
+            if reduction:
+                loss = loss.mean()
 
         return loss
 
