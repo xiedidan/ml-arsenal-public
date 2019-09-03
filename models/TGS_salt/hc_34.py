@@ -124,6 +124,7 @@ class Unet_scSE_hyper(nn.Module):
             self.resnet.conv1,
             self.resnet.bn1,
             self.resnet.relu,
+            self.resnet.maxpool
         )
 
         self.encoder2 = self.resnet.layer1 # 64
@@ -144,10 +145,10 @@ class Unet_scSE_hyper(nn.Module):
         self.decoder4 = Decoder(512+256,256,256, 256)
         self.decoder3 = Decoder(256+128,128,128, 128)
         self.decoder2 = Decoder(128+64 ,64 ,64, 64)
-        self.decoder1 = Decoder(64     ,64 ,64, 0)
+        # self.decoder1 = Decoder(64     ,64 ,64, 0)
 
         self.logit = nn.Sequential(
-            nn.Conv2d(1024, 1, kernel_size=1, padding=0)
+            nn.Conv2d(960, 1, kernel_size=1, padding=0)
         )
         
         # init logit
@@ -178,7 +179,7 @@ class Unet_scSE_hyper(nn.Module):
         '''
 
         e1 = self.conv1(x)
-        #print(e1.size())
+        #print('e1',e1.size())
         e2 = self.encoder2(e1)
         #print('e2',e2.size())
         e3 = self.encoder3(e2)
@@ -191,20 +192,26 @@ class Unet_scSE_hyper(nn.Module):
         f = self.center(e5)
         #print('f',f.size())
         d5 = self.decoder5(f, e5)
+        #print('d5',d5.size())
         d4 = self.decoder4(d5,e4)
+        #print('d4',d4.size())
         d3 = self.decoder3(d4,e3)
+        #print('d3',d3.size())
         d2 = self.decoder2(d3,e2)
-        d1 = self.decoder1(d2)
+        #print('d2',d2.size())
+        # d1 = self.decoder1(d2)
         #print('d1',d1.size())
 
         f = torch.cat((
-            d1,
+            # d1,
             F.upsample(d2,scale_factor= 2, mode='bilinear',align_corners=False),
             F.upsample(d3,scale_factor= 4, mode='bilinear',align_corners=False),
             F.upsample(d4,scale_factor= 8, mode='bilinear',align_corners=False),
             F.upsample(d5,scale_factor=16, mode='bilinear',align_corners=False),
         ),1)
         #print('hc',f.size())
+
+        f = F.upsample(f, scale_factor= 2, mode='bilinear',align_corners=False)
 
         #f = F.dropout2d(f, p=0.50, training=self.training)
         logit = self.logit(f)
